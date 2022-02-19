@@ -8,12 +8,12 @@ import (
     "strconv"
 )
 
-const Port int = 8249
+const port int = 8249
 
 func GetStatus(host, token string) (status Status, err error) {
     var statusResponse statusResponse
 
-    req, err := http.NewRequest(http.MethodGet, "http://"+host+":"+strconv.Itoa(Port)+"/state", nil)
+    req, err := http.NewRequest(http.MethodGet, "http://"+host+":"+strconv.Itoa(port)+"/state", nil)
     if err != nil {
         return statusResponse.Status, err
     }
@@ -40,7 +40,7 @@ func GetStatus(host, token string) (status Status, err error) {
 }
 
 func Authenticate(host string) (token string, err error) {
-    resp, err := http.Get("http://" + host + ":" + strconv.Itoa(Port) + "/authenticate")
+    resp, err := http.Get("http://" + host + ":" + strconv.Itoa(port) + "/authenticate")
     if err != nil {
         return token, err
     }
