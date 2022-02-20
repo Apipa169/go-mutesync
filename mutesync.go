@@ -13,7 +13,7 @@ const port int = 8249
 func GetStatus(host, token string) (status Status, err error) {
     var statusResponse statusResponse
 
-    req, err := http.NewRequest(http.MethodGet, "http://"+host+":"+strconv.Itoa(port)+"/state", nil)
+    req, err := http.NewRequest(http.MethodGet, "http://" + host + ":" + strconv.Itoa(port) + "/state", nil)
     if err != nil {
         return statusResponse.Status, err
     }
@@ -24,6 +24,14 @@ func GetStatus(host, token string) (status Status, err error) {
     resp, err := client.Do(req)
     if err != nil {
         return statusResponse.Status, err
+    }
+
+    if resp.StatusCode == http.StatusForbidden {
+        return statusResponse.Status, errors.New("invalid token")
+    }
+
+    if resp.StatusCode != http.StatusOK {
+        return statusResponse.Status, errors.New("unexpected response from mutesync")
     }
 
     body, err := ioutil.ReadAll(resp.Body)
