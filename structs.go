@@ -10,6 +10,10 @@ type statusResponse struct {
     Status Status `json:"data"`
 }
 
+type errorResponse struct {
+    ErrorMsg string `json:"error"`
+}
+
 type Status struct {
     InMeeting bool   `json:"in_meeting"`
     Hostname  string `json:"hostname"`

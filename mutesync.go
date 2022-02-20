@@ -60,30 +60,30 @@ func doRequest(host, path string, token *string) (body []byte, err error){
         return body, err
     }
 
+    body, err = ioutil.ReadAll(resp.Body)
+    if err != nil {
+        return body, err
+    }
+
     switch resp.StatusCode {
     case http.StatusForbidden:
-        return body, ErrAuthFailed{Reason: getAuthFailedReason(path), Path: path}
+        return body, ErrAuthFailed{Reason: getAuthFailedReason(body), Path: path}
     case http.StatusOK:
         break
     default:
         return body, ErrUnexpectedResponse{}
     }
 
-    body, err = ioutil.ReadAll(resp.Body)
-    if err != nil {
-        return body, err
-    }
-
     return body, nil
 }
 
-func getAuthFailedReason(path string) (reason string) {
-    switch path {
-    case pathAuth:
-        return "make sure mutesync allows external apps"
-    case pathState:
-        return "invalid token"
+func getAuthFailedReason(body []byte) (reason string) {
+    var errorResp errorResponse
+
+    err := json.Unmarshal(body, &errorResp)
+    if err != nil {
+        return "unknown error"
     }
 
-    return "forbidden"
+    return errorResp.ErrorMsg
 }
