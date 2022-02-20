@@ -2,39 +2,19 @@ package mutesync
 
 import (
     "encoding/json"
-    "errors"
     "io/ioutil"
     "net/http"
     "strconv"
 )
 
 const port int = 8249
+const pathAuth = "/authenticate"
+const pathState = "/state"
 
-func GetStatus(host, token string) (status Status, err error) {
+func GetStatus(host, token string) (Status, error) {
     var statusResponse statusResponse
 
-    req, err := http.NewRequest(http.MethodGet, "http://" + host + ":" + strconv.Itoa(port) + "/state", nil)
-    if err != nil {
-        return statusResponse.Status, err
-    }
-
-    req.Header.Set("Authorization", "Token "+token)
-    req.Header.Set("x-mutesync-api-version", "1")
-    client := &http.Client{}
-    resp, err := client.Do(req)
-    if err != nil {
-        return statusResponse.Status, err
-    }
-
-    if resp.StatusCode == http.StatusForbidden {
-        return statusResponse.Status, errors.New("invalid token")
-    }
-
-    if resp.StatusCode != http.StatusOK {
-        return statusResponse.Status, errors.New("unexpected response from mutesync")
-    }
-
-    body, err := ioutil.ReadAll(resp.Body)
+    body, err := doRequest(host, pathState, &token)
     if err != nil {
         return statusResponse.Status, err
     }
@@ -47,32 +27,63 @@ func GetStatus(host, token string) (status Status, err error) {
     return statusResponse.Status, nil
 }
 
-func Authenticate(host string) (token string, err error) {
-    resp, err := http.Get("http://" + host + ":" + strconv.Itoa(port) + "/authenticate")
-    if err != nil {
-        return token, err
-    }
-
-    if resp.StatusCode == http.StatusForbidden {
-        return token, errors.New("make sure mutesync allows external apps")
-    }
-
-    if resp.StatusCode != http.StatusOK {
-        return token, errors.New("unexpected response from mutesync")
-    }
-
-    body, err := ioutil.ReadAll(resp.Body)
-    if err != nil {
-        return token, err
-    }
-
+func Authenticate(host string) (string, error) {
     var authResponse authResponse
+
+    body, err := doRequest(host, pathAuth, nil)
+    if err != nil {
+        return authResponse.Token, err
+    }
+
     err = json.Unmarshal(body, &authResponse)
     if err != nil {
-        return token, err
+        return authResponse.Token, err
     }
 
-    token = authResponse.Token
+    return authResponse.Token, nil
+}
 
-    return token, nil
+func doRequest(host, path string, token *string) (body []byte, err error){
+    req, err := http.NewRequest(http.MethodGet, "http://" + host + ":" + strconv.Itoa(port) + path, nil)
+    if err != nil {
+        return body, err
+    }
+
+    req.Header.Set("x-mutesync-api-version", "1")
+    if token != nil {
+        req.Header.Set("Authorization", "Token " + *token)
+    }
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        return body, err
+    }
+
+    switch resp.StatusCode {
+    case http.StatusForbidden:
+        return body, ErrAuthFailed{Reason: getAuthFailedReason(path), Path: path}
+    case http.StatusOK:
+        break
+    default:
+        return body, ErrUnexpectedResponse{}
+    }
+
+    body, err = ioutil.ReadAll(resp.Body)
+    if err != nil {
+        return body, err
+    }
+
+    return body, nil
+}
+
+func getAuthFailedReason(path string) (reason string) {
+    switch path {
+    case pathAuth:
+        return "make sure mutesync allows external apps"
+    case pathState:
+        return "invalid token"
+    }
+
+    return "forbidden"
 }
