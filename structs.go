@@ -2,15 +2,15 @@ package mutesync
 
 import "fmt"
 
-type authResponse struct {
+type authResp struct {
     Token string `json:"token"`
 }
 
-type statusResponse struct {
+type statusResp struct {
     Status Status `json:"data"`
 }
 
-type errorResponse struct {
+type errorResp struct {
     ErrorMsg string `json:"error"`
 }
 

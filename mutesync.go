@@ -12,35 +12,53 @@ const pathAuth = "/authenticate"
 const pathState = "/state"
 
 func GetStatus(host, token string) (Status, error) {
-    var statusResponse statusResponse
+    var sr statusResp
 
     body, err := doRequest(host, pathState, &token)
     if err != nil {
-        return statusResponse.Status, err
+        return sr.Status, err
     }
 
-    err = json.Unmarshal(body, &statusResponse)
+    err = json.Unmarshal(body, &sr)
     if err != nil {
-        return statusResponse.Status, err
+        return sr.Status, err
     }
 
-    return statusResponse.Status, nil
+    return sr.Status, nil
+}
+
+func IsInMeeting(host, token string) (bool, error) {
+    status, err := GetStatus(host, token)
+    if err != nil {
+        return false, err
+    }
+
+    return status.InMeeting, nil
+}
+
+func IsMuted(host, token string) (bool, error) {
+    status, err := GetStatus(host, token)
+    if err != nil {
+        return false, err
+    }
+
+    return status.Muted, nil
 }
 
 func Authenticate(host string) (string, error) {
-    var authResponse authResponse
+    var ar authResp
 
     body, err := doRequest(host, pathAuth, nil)
     if err != nil {
-        return authResponse.Token, err
+        return ar.Token, err
     }
 
-    err = json.Unmarshal(body, &authResponse)
+    err = json.Unmarshal(body, &ar)
     if err != nil {
-        return authResponse.Token, err
+        return ar.Token, err
     }
 
-    return authResponse.Token, nil
+    return ar.Token, nil
 }
 
 func doRequest(host, path string, token *string) (body []byte, err error){
@@ -78,12 +96,12 @@ func doRequest(host, path string, token *string) (body []byte, err error){
 }
 
 func getAuthFailedReason(body []byte) (reason string) {
-    var errorResp errorResponse
+    var er errorResp
 
-    err := json.Unmarshal(body, &errorResp)
+    err := json.Unmarshal(body, &er)
     if err != nil {
         return "unknown error"
     }
 
-    return errorResp.ErrorMsg
+    return er.ErrorMsg
 }
