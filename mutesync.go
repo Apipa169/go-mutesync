@@ -7,11 +7,22 @@ import (
     "strconv"
 )
 
-const port int = 8249
-const pathAuth = "/authenticate"
-const pathState = "/state"
+const port = 8249
+const pathAuth = "authenticate"
+const pathState = "state"
 
-func GetStatus(host, token string) (Status, error) {
+func InitMutesyncClient(host string) (mc MutesyncClient, err error) {
+    mc.Host = host
+
+    mc.Token, err = authenticate(host)
+    if err != nil {
+        return mc, err
+    }
+
+    return mc, nil
+}
+
+func getStatus(host, token string) (Status, error) {
     var sr statusResp
 
     body, err := doRequest(host, pathState, &token)
@@ -27,8 +38,8 @@ func GetStatus(host, token string) (Status, error) {
     return sr.Status, nil
 }
 
-func IsInMeeting(host, token string) (bool, error) {
-    status, err := GetStatus(host, token)
+func isInMeeting(host, token string) (bool, error) {
+    status, err := getStatus(host, token)
     if err != nil {
         return false, err
     }
@@ -36,8 +47,8 @@ func IsInMeeting(host, token string) (bool, error) {
     return status.InMeeting, nil
 }
 
-func IsMuted(host, token string) (bool, error) {
-    status, err := GetStatus(host, token)
+func isMuted(host, token string) (bool, error) {
+    status, err := getStatus(host, token)
     if err != nil {
         return false, err
     }
@@ -45,7 +56,7 @@ func IsMuted(host, token string) (bool, error) {
     return status.Muted, nil
 }
 
-func Authenticate(host string) (string, error) {
+func authenticate(host string) (string, error) {
     var ar authResp
 
     body, err := doRequest(host, pathAuth, nil)
@@ -62,7 +73,8 @@ func Authenticate(host string) (string, error) {
 }
 
 func doRequest(host, path string, token *string) (body []byte, err error){
-    req, err := http.NewRequest(http.MethodGet, "http://" + host + ":" + strconv.Itoa(port) + path, nil)
+    url := "http://" + host + ":" + strconv.Itoa(port) + "/" + path
+    req, err := http.NewRequest(http.MethodGet, url, nil)
     if err != nil {
         return body, err
     }
@@ -84,10 +96,10 @@ func doRequest(host, path string, token *string) (body []byte, err error){
     }
 
     switch resp.StatusCode {
-    case http.StatusForbidden:
-        return body, ErrAuthFailed{Reason: getAuthFailedReason(body), Path: path}
     case http.StatusOK:
         break
+    case http.StatusForbidden:
+        return body, ErrAuthFailed{Reason: getAuthFailedReason(body), Path: path}
     default:
         return body, ErrUnexpectedResponse{}
     }
